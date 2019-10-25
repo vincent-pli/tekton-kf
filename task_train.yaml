@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  name: train-model
+spec:
+  inputs:
+    resources:
+      - name: train-image
+        type: image
+    params:
+      - name: tf_data_dir
+        default: /workspace/data
+      - name: tf_model_dir
+        default: /workspace/model
+      - name: tf_export_dir
+        default: /workspace/model/export
+      - name: tf_train_steps
+        default: '200'
+      - name: tf_batch_size
+        default: '100'
+      - name: tf_learning_rate
+        default: '0.01'
+  steps:
+    - name: train
+      image: ${inputs.resources.train-image.url}
+      #args: ["sleep", "6000"]
+      command: ["python", "/opt/model.py"]
+              #- python /opt/model.py
+      args:
+        - --tf-data-dir=${inputs.params.tf_data_dir}
+        - --tf-model-dir=${inputs.params.tf_model_dir}
+        - --tf-export-dir=${inputs.params.tf_export_dir}
+        - --tf-train-steps=${inputs.params.tf_train_steps}
+        - --tf-batch-size=${inputs.params.tf_batch_size}
+        - --tf-learning-rate=${inputs.params.tf_learning_rate}
+    - name: deploy
+      image: docker.io/vincentpli/serving_deployer:0.7
+      args:
+        - --cluster-name
+        - mnist-pipeline
+        - --model-export-path
+        - ${inputs.params.tf_export_dir}
+        - --server-name
+        - mnist-01
+        - --namespace
+        - tekton
+          #- --service-type
+          #- NodePort
+    - name: hello
+      image: docker
+      args: ["sleep", "6000"]

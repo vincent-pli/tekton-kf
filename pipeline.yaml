@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  name: tutorial-pipeline
+spec:
+  resources:
+    - name: source-repo
+      type: git
+    - name: docker-image
+      type: image
+  tasks:
+    - name: build-model-image
+      taskRef:
+        name: build-docker-image-from-git-source
+      params:
+        - name: pathToDockerFile
+          value: /workspace/docker-source/mnist/Dockerfile.model
+        - name: pathToContext
+          value: /workspace/docker-source/mnist/ #configure: may change according to your source
+      resources:
+        inputs:
+          - name: docker-source
+            resource: source-repo
+        outputs:
+          - name: docker-image
+            resource: docker-image
+    - name: train
+      taskRef:
+        name: train-model
+      resources:
+        inputs:
+          - name: train-image
+            resource: docker-image
+            from:
+              - build-model-image
